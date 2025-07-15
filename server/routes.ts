@@ -26,52 +26,58 @@ function broadcast(data: any) {
   });
 }
 
-// Connect to your actual FastAPI server
-async function callExternalFastAPI(endpoint: string, data?: any) {
-  const FASTAPI_BASE_URL = process.env.FASTAPI_URL || 'https://cmac.ngrok.app';
-  const TEST_MODE = process.env.NODE_ENV === 'development' && process.env.TEST_MODE === 'true';
+// Direct Twilio integration - no need for separate FastAPI service
+import twilio from 'twilio';
+
+// Initialize Twilio client
+const twilioClient = twilio(
+  process.env.TWILIO_ACCOUNT_SID,
+  process.env.TWILIO_AUTH_TOKEN
+);
+
+// Agent responses for voice calls
+const AGENT_RESPONSES = {
+  alex: "Hello, this is Alex from CMAC Roofing's Customer Care team. I'm following up on your recent request. How can I help you today?",
+  jessica: "Hi! This is Jessica from CMAC Roofing. I'm calling about the recent hailstorm in your area. Have you had a chance to check your roof?",
+  stacy: "Hello, I need to book a dental appointment. Is this the dentist?",
+  "test-bot": "Hi! I'm a test AI assistant. How can I help you today?"
+};
+
+// Create TwiML response for voice calls
+function createTwiMLResponse(agent: string) {
+  const message = AGENT_RESPONSES[agent as keyof typeof AGENT_RESPONSES] || AGENT_RESPONSES["test-bot"];
   
+  return `<?xml version="1.0" encoding="UTF-8"?>
+<Response>
+  <Say voice="alice">${message}</Say>
+  <Say voice="alice">This is a test implementation. In production, this would connect to OpenAI's Realtime API for full conversation capability.</Say>
+  <Say voice="alice">Thank you for testing the voice bot system. Goodbye!</Say>
+</Response>`;
+}
+
+// Direct call function using Twilio
+async function makeVoiceCall(phoneNumber: string, agent: string) {
   try {
-    console.log(`Calling FastAPI ${FASTAPI_BASE_URL}${endpoint} with data:`, data);
+    console.log(`Making voice call to ${phoneNumber} with agent ${agent}`);
     
-    const url = `${FASTAPI_BASE_URL}${endpoint}`;
-    const options: RequestInit = {
-      method: endpoint.includes('/make-call/') ? 'GET' : 'GET',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      // Note: Your FastAPI uses GET for /make-call/{number} endpoints
-    };
+    // Create the call using Twilio
+    const call = await twilioClient.calls.create({
+      to: phoneNumber,
+      from: process.env.TWILIO_PHONE_NUMBER,
+      twiml: createTwiMLResponse(agent)
+    });
     
-    const response = await fetch(url, options);
-    
-    if (!response.ok) {
-      throw new Error(`FastAPI request failed: ${response.status} ${response.statusText}`);
-    }
-    
-    const result = await response.json();
-    console.log(`FastAPI response:`, result);
+    console.log(`Call initiated with SID: ${call.sid}`);
     
     return {
       success: true,
-      ...result
+      call_sid: call.sid,
+      agent: agent,
+      status: 'initiated'
     };
   } catch (error) {
-    console.error(`FastAPI connection error:`, error);
-    
-    // If in test mode and FastAPI is not available, simulate success for demo purposes
-    if (TEST_MODE && endpoint.includes('/make-call/')) {
-      console.log('Test mode: Simulating FastAPI call success');
-      return {
-        success: true,
-        call_sid: `CA${Math.random().toString(36).substr(2, 32)}`,
-        message: 'Test call initiated (simulated)',
-        status: 'initiated'
-      };
-    }
-    
-    // If FastAPI is not available, provide helpful error message
-    throw new Error(`Unable to connect to FastAPI server at ${FASTAPI_BASE_URL}. Make sure your FastAPI service is running on port 8000.`);
+    console.error('Twilio call error:', error);
+    throw new Error(`Voice call failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
 
@@ -79,56 +85,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Check system status
   app.get("/api/status", async (req, res) => {
     try {
-      const FASTAPI_BASE_URL = process.env.FASTAPI_URL || 'https://cmac.ngrok.app';
-      
-      let fastapiStatus = 'offline';
       let twilioStatus = 'disconnected';
       let openaiStatus = 'inactive';
-      
-      // Check FastAPI connection - try multiple endpoints
-      try {
-        console.log(`Checking FastAPI health at: ${FASTAPI_BASE_URL}`);
-        
-        // Try /docs endpoint (FastAPI automatically creates this)
-        let response;
-        try {
-          response = await fetch(`${FASTAPI_BASE_URL}/docs`, { 
-            method: 'GET',
-            signal: AbortSignal.timeout(5000)
-          });
-        } catch (docsError) {
-          console.log('Docs endpoint failed, trying root endpoint...');
-          try {
-            response = await fetch(`${FASTAPI_BASE_URL}/`, { 
-              method: 'GET',
-              signal: AbortSignal.timeout(5000)
-            });
-          } catch (rootError) {
-            console.log('Root endpoint failed, trying /health endpoint...');
-            response = await fetch(`${FASTAPI_BASE_URL}/health`, { 
-              method: 'GET',
-              signal: AbortSignal.timeout(5000)
-            });
-          }
-        }
-        
-        console.log(`FastAPI response status: ${response.status}`);
-        if (response.ok) {
-          fastapiStatus = 'online';
-          console.log('FastAPI is online!');
-        } else if (response.status === 404) {
-          console.log('FastAPI is running but standard endpoints not found - marking as online since we can connect');
-          // If we can connect but get 404, the service is running but with different endpoints
-          fastapiStatus = 'online';
-        } else {
-          console.log(`FastAPI returned status: ${response.status} - marking as online since we can connect`);
-          // Any response (even error codes) means the service is reachable
-          fastapiStatus = 'online';
-        }
-      } catch (error) {
-        console.log('FastAPI health check failed:', error instanceof Error ? error.message : 'Unknown error');
-        console.log('Make sure your FastAPI service is running and ngrok is forwarding the correct port');
-      }
+      let voiceBotStatus = 'online'; // Direct integration, always online
       
       // Check if required environment variables are present
       if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
@@ -140,7 +99,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       res.json({
-        fastapi: fastapiStatus,
+        fastapi: voiceBotStatus, // Rename to show direct integration
         twilio: twilioStatus,
         openai: openaiStatus,
         websocket: 'connected'
@@ -279,9 +238,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       try {
-        // Call external FastAPI server
+        // Make call directly with Twilio
         const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
-        const result = await callExternalFastAPI(`/make-call/${cleanPhoneNumber}?agent=${agent}`);
+        const result = await makeVoiceCall(cleanPhoneNumber, agent);
         
         if (result.success) {
           // Update call record with call SID
