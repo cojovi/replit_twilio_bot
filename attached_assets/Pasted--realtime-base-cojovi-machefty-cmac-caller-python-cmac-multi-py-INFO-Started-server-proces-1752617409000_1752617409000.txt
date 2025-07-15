@@ -1,0 +1,64 @@
+(realtime) (base) cojovi@machefty cmac_caller % python cmac_multi.py
+INFO:     Started server process [34593]
+INFO:     Waiting for application startup.
+INFO:     Application startup complete.
+INFO:     Uvicorn running on http://0.0.0.0:5050 (Press CTRL+C to quit)
+INFO:     34.75.86.71:0 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     34.75.86.71:0 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     34.75.86.71:0 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     34.75.86.71:0 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     34.75.86.71:0 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     34.75.86.71:0 - "GET /health HTTP/1.1" 404 Not Found
+INFO:     34.75.86.71:0 - "GET /make-call/18177512041?agent=jessica HTTP/1.1" 200 OK
+INFO:     54.221.46.188:0 - "POST /outbound-call-handler?agent=jessica HTTP/1.1" 200 OK
+INFO:     ('34.235.123.10', 0) - "WebSocket /media-stream" [accepted]
+ERROR:    Exception in ASGI application
+Traceback (most recent call last):
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/uvicorn/protocols/websockets/websockets_impl.py", line 244, in run_asgi
+    result = await self.app(self.scope, self.asgi_receive, self.asgi_send)  # type: ignore[func-returns-value]
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/uvicorn/middleware/proxy_headers.py", line 70, in __call__
+    return await self.app(scope, receive, send)
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/fastapi/applications.py", line 1054, in __call__
+    await super().__call__(scope, receive, send)
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/starlette/applications.py", line 113, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/starlette/middleware/errors.py", line 152, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/starlette/middleware/cors.py", line 77, in __call__
+    await self.app(scope, receive, send)
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/starlette/middleware/exceptions.py", line 62, in __call__
+    await wrap_app_handling_exceptions(self.app, conn)(scope, receive, send)
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/starlette/routing.py", line 715, in __call__
+    await self.middleware_stack(scope, receive, send)
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/starlette/routing.py", line 735, in app
+    await route.handle(scope, receive, send)
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/starlette/routing.py", line 362, in handle
+    await self.app(scope, receive, send)
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/starlette/routing.py", line 95, in app
+    await wrap_app_handling_exceptions(app, session)(scope, receive, send)
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/starlette/_exception_handler.py", line 62, in wrapped_app
+    raise exc
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/starlette/_exception_handler.py", line 51, in wrapped_app
+    await app(scope, receive, sender)
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/starlette/routing.py", line 93, in app
+    await func(session)
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/fastapi/routing.py", line 383, in app
+    await dependant.call(**solved_result.values)
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/new/speech-assistant-openai-realtime-api-python/cmac_caller/cmac_multi.py", line 105, in media
+    async with websockets.connect(OPENAI_WS, extra_headers=hdrs) as oai:
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/websockets/asyncio/client.py", line 587, in __aenter__
+    return await self
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/websockets/asyncio/client.py", line 541, in __await_impl__
+    self.connection = await self.create_connection()
+  File "/Users/cojovi/thebunker/repos/assistant-openai-realtime/realtime/lib/python3.9/site-packages/websockets/asyncio/client.py", line 467, in create_connection
+    _, connection = await loop.create_connection(factory, **kwargs)
+  File "uvloop/loop.pyx", line 1857, in uvloop.loop.Loop.create_connection
+TypeError: create_connection() got an unexpected keyword argument 'extra_headers'
+INFO:     connection open
+INFO:     connection closed
+INFO:     54.161.229.87:0 - "POST /recording-status-callback HTTP/1.1" 200 OK
+INFO:     34.75.86.71:0 - "GET /health HTTP/1.1" 404 Not Found
