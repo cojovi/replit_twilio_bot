@@ -28,7 +28,7 @@ function broadcast(data: any) {
 
 // Connect to your actual FastAPI server
 async function callExternalFastAPI(endpoint: string, data?: any) {
-  const FASTAPI_BASE_URL = process.env.FASTAPI_URL || 'http://localhost:5050';
+  const FASTAPI_BASE_URL = process.env.FASTAPI_URL || 'https://cmac.ngrok.app';
   const TEST_MODE = process.env.NODE_ENV === 'development' && process.env.TEST_MODE === 'true';
   
   try {
@@ -79,7 +79,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Check system status
   app.get("/api/status", async (req, res) => {
     try {
-      const FASTAPI_BASE_URL = process.env.FASTAPI_URL || 'http://localhost:5050';
+      const FASTAPI_BASE_URL = process.env.FASTAPI_URL || 'https://cmac.ngrok.app';
       
       let fastapiStatus = 'offline';
       let twilioStatus = 'disconnected';
