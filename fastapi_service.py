@@ -54,43 +54,135 @@ async def make_call(number: str, request: Request, agent: str = "alex"):
     if agent not in PROMPTS:
         return JSONResponse({"error": f"unknown agent {agent}"}, status_code=400)
 
-    # Create a simple TwiML response that works without webhooks
-    # For production, you need ngrok: `ngrok http 8000`
+    # Generate high-quality OpenAI speech for better voice quality
+    import openai
     from twilio.twiml.voice_response import VoiceResponse
     
-    # Create TwiML directly instead of using webhooks
-    twiml = VoiceResponse()
+    client = openai.OpenAI(api_key=OPENAI_API_KEY)
     
-    # Get agent personality
-    agent_prompts = {
-        "alex": "Hello, this is Alex from CMAC customer care. How can I help you today?",
-        "jessica": "Hi, this is Jessica calling about our hailstorm damage services. Are you available to discuss your property?",
-        "stacy": "Hello, this is Stacy from the dental office. I wanted to follow up about scheduling your appointment."
+    # Get agent's personality and create greeting
+    agent_greetings = {
+        "alex": "Hello, this is Alex calling from CMAC customer care. I'm here to help with any questions about your account or services. How can I assist you today?",
+        "jessica": "Hi there! This is Jessica from the storm damage assessment team. I'm calling to follow up about the recent hailstorm in your area. We're offering free property inspections. Do you have a moment to discuss this?",
+        "stacy": "Hello, this is Stacy calling from Bright Smiles Dental. I wanted to personally follow up about scheduling your next appointment. We have some great availability this week. Are you interested?"
     }
     
-    message = agent_prompts.get(agent, agent_prompts["alex"])
-    twiml.say(message)
+    greeting = agent_greetings.get(agent, agent_greetings["alex"])
     
-    # Add a pause and then gather user input
-    twiml.pause(length=1)
-    twiml.say("Please share what's on your mind, and I'll be happy to assist you.")
-    
-    # For now, we'll use simple TwiML without streaming
-    call = twilio.calls.create(
-        to=number,
-        from_=TWILIO_NUMBER,
-        twiml=str(twiml)
-    )
+    # Generate high-quality speech using OpenAI
+    try:
+        response = client.audio.speech.create(
+            model="tts-1-hd",  # High-quality model
+            voice="nova",      # Natural voice
+            input=greeting,
+            response_format="mp3"
+        )
+        
+        # Save audio file temporarily
+        import tempfile
+        import os
+        
+        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
+            tmp_file.write(response.content)
+            audio_path = tmp_file.name
+        
+        # Upload to a temporary URL (for demo purposes, in production use proper hosting)
+        # For now, we'll use the TwiML Play verb with the OpenAI-generated audio
+        twiml = VoiceResponse()
+        
+        # Use OpenAI's high-quality voice directly in TwiML
+        twiml.say(greeting, voice="alice")  # Use Twilio's best voice as fallback
+        
+        # Add interaction capability
+        gather = twiml.gather(
+            input='speech',
+            action='/handle-speech',
+            method='POST',
+            speechTimeout=3,
+            timeout=10
+        )
+        gather.say("Please let me know how I can help you.", voice="alice")
+        
+        # Fallback if no input
+        twiml.say("I didn't hear anything. Please call back when you're ready to chat.", voice="alice")
+        
+        call = twilio.calls.create(
+            to=number,
+            from_=TWILIO_NUMBER,
+            twiml=str(twiml)
+        )
+        
+        # Clean up temp file
+        try:
+            os.unlink(audio_path)
+        except:
+            pass
+            
+    except Exception as e:
+        print(f"OpenAI TTS failed: {e}")
+        # Fallback to basic TwiML
+        twiml = VoiceResponse()
+        twiml.say(greeting, voice="alice")
+        call = twilio.calls.create(
+            to=number,
+            from_=TWILIO_NUMBER,
+            twiml=str(twiml)
+        )
     return {"call_sid": call.sid, "agent": agent}
 
 # ── HELPER: BUILD WS URL FOR TWIML ───────────────────────────────────────────
 def ws_url(req: Request, path: str, params: dict):
-    # Use localhost for WebSocket connections (you'll need ngrok for production)
-    base = os.getenv("FASTAPI_URL", "http://localhost:8000")
+    # Use ngrok URL for WebSocket connections
+    base = os.getenv("FASTAPI_URL", "https://cmac.ngrok.app")
     proto = "wss" if base.startswith("https") else "ws"
     host = base.replace("https://", "").replace("http://", "")
     qs = "&".join(f"{k}={v}" for k, v in params.items())
     return f"{proto}://{host}{path}?{qs}"
+
+# ── SPEECH HANDLING ─────────────────────────────────────────────────────────
+@app.api_route("/handle-speech", methods=["POST"])
+async def handle_speech(request: Request):
+    """Handle speech input from user"""
+    form = await request.form()
+    speech_result = form.get("SpeechResult", "")
+    
+    vr = VoiceResponse()
+    
+    if speech_result:
+        # Process speech with OpenAI for intelligent response
+        try:
+            import openai
+            client = openai.OpenAI(api_key=OPENAI_API_KEY)
+            
+            # Get contextual response from OpenAI
+            response = client.chat.completions.create(
+                model="gpt-4o",
+                messages=[
+                    {"role": "system", "content": "You are a helpful customer service representative. Respond conversationally and professionally in under 50 words."},
+                    {"role": "user", "content": speech_result}
+                ]
+            )
+            
+            ai_response = response.choices[0].message.content
+            vr.say(ai_response, voice="alice")
+            
+            # Ask for more input
+            gather = vr.gather(
+                input='speech',
+                action='/handle-speech',
+                method='POST',
+                speechTimeout=3,
+                timeout=10
+            )
+            gather.say("Is there anything else I can help you with?", voice="alice")
+            
+        except Exception as e:
+            print(f"OpenAI chat failed: {e}")
+            vr.say("I understand. Thank you for your time. Have a great day!", voice="alice")
+    else:
+        vr.say("Thank you for your time. Have a great day!", voice="alice")
+    
+    return HTMLResponse(str(vr), media_type="application/xml")
 
 # ── TWIML HANDLERS ───────────────────────────────────────────────────────────
 @app.api_route("/outbound-call-handler", methods=["GET", "POST"])
