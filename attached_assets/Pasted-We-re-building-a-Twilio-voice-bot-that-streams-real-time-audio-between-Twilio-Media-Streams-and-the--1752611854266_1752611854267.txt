@@ -1,0 +1,44 @@
+We’re building a Twilio voice-bot that streams real-time audio between Twilio Media Streams and the OpenAI Realtime API so callers can talk to different AI “agents” on the same phone line without restarting the server.
+
+Current codebase
+Fork of Twilio’s sample repo speech-assistant-openai-realtime-api-python (MIT). 
+GitHub
+
+My fork lives at github.com/cojovi/speech-assistant-openai-realtime-api-python, folder cmac_caller/. Key files:
+
+cmac_multi.py – FastAPI app that
+
+/make-call/{number}?agent=alex dials out through Twilio
+
+/inbound-call-handler & /outbound-call-handler return TwiML <Connect><Stream> that points Twilio at /media-stream
+
+/media-stream bridges the Twilio WS to wss://api.openai.com/v1/realtime/ws, injecting the chosen agent’s system prompt and piping audio both ways 
+GitHub
+
+prompts.py – single source-of-truth dict PROMPTS (alex, jessica, stacy, etc.) so the front-end can switch personalities on the fly with ?agent=. Two placeholders (mitch, eddie) still TODO. 
+GitHub
+
+A legacy one-off cmac_jessica.py still exists but throws NameError: INBOUND_GREETING and is being retired. 
+GitHub
+
+Where we left off / open issues
+Hot-switch personalities works conceptually via the query-string, but we need confirmation that the correct prompt is loaded into the initial messages array each time and that no state leaks between calls.
+
+Audio bridge bugs: occasional WS errors (extra_headers w/ uvloop) and some calls hang with silence – likely buffering or base64 encoding mismatch Twilio→OpenAI→Twilio.
+
+Front-end: bare-bones static page served, returns 304; not critical yet.
+
+Recording callback is stubbed (/recording-status-callback) – will eventually push MP3 + transcript to our CRM.
+
+Env vars required in .env: OPENAI_API_KEY, TWILIO_ACCOUNT_SID, TWILIO_AUTH_TOKEN, TWILIO_PHONE_NUMBER, optional PORT.
+
+What I need next
+Audit media() handler to ensure full-duplex audio flows without race conditions (Twilio noise → OpenAI latency → Twilio playback).
+
+Confirm personality isolation and advise on a safer pattern if multiple concurrent calls request different agents.
+
+Replace the placeholders in prompts.py with robust prompts for “mitch” and “eddie”.
+
+Suggest best practice for scaling: multiple worker processes vs. one process with async tasks, and any Twilio/OpenAI rate-limit considerations.
+
+Return exact file patches or new snippets, not high-level theory. Keep answers concise and runnable.
