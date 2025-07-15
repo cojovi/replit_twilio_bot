@@ -140,9 +140,12 @@ The architecture prioritizes type safety, real-time capabilities, and seamless i
 5. **You can then make real calls** through the interface
 
 ### Connection Architecture:
-- **Dashboard → FastAPI**: Direct connection to `localhost:8000` 
-- **Twilio → FastAPI**: Public connection via ngrok URL for webhooks
-- Both connections are required for full functionality
+- **Dashboard → FastAPI**: Direct connection via ngrok URL (configurable)
+- **Twilio → FastAPI**: Public connection via ngrok URL for webhooks  
+- Dashboard now connects to your ngrok URL: `https://cmac.ngrok.app`
+
+### If your ngrok URL is different:
+Set the environment variable `FASTAPI_URL` to your actual ngrok URL
 
 ### Test Mode (without FastAPI):
 - Dashboard works in demonstration mode when FastAPI is offline

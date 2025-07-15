@@ -1,0 +1,50 @@
+FastAPI health check failed: fetch failed
+9:09:13 PM [express] GET /api/status 304 in 2ms :: {"fastapi":"offline","twilio":"connected","openai…
+FastAPI health check failed: fetch failed
+9:09:43 PM [express] GET /api/status 304 in 2ms :: {"fastapi":"offline","twilio":"connected","openai…
+FastAPI health check failed: fetch failed
+9:10:13 PM [express] GET /api/status 304 in 2ms :: {"fastapi":"offline","twilio":"connected","openai…
+Calling FastAPI http://localhost:8000/make-call/18177512041?agent=alex with data: undefined
+FastAPI connection error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13392:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async callExternalFastAPI (/home/runner/workspace/server/routes.ts:46:22)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:252:24) {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:8000
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1611:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 8000
+  }
+}
+9:10:32 PM [express] POST /api/calls/make 500 in 2ms :: {"error":"Connection error to FastAPI server…
+9:10:32 PM [express] GET /api/calls/recent 200 in 1ms :: [{"id":"2","phoneNumber":"+18177512041","ag…
+9:10:32 PM [express] GET /api/calls/recent 304 in 1ms :: [{"id":"2","phoneNumber":"+18177512041","ag…
+WebSocket client disconnected
+9:10:38 PM [express] GET /api/agents 304 in 1ms :: [{"id":"alex","name":"Alex","description":"Custom…
+9:10:38 PM [express] GET /api/calls/recent 304 in 0ms :: [{"id":"2","phoneNumber":"+18177512041","ag…
+FastAPI health check failed: fetch failed
+9:10:38 PM [express] GET /api/status 304 in 2ms :: {"fastapi":"offline","twilio":"connected","openai…
+WebSocket client connected
+Calling FastAPI http://localhost:8000/make-call/18177512041?agent=alex with data: undefined
+FastAPI connection error: TypeError: fetch failed
+    at node:internal/deps/undici/undici:13392:13
+    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)
+    at async callExternalFastAPI (/home/runner/workspace/server/routes.ts:46:22)
+    at async <anonymous> (/home/runner/workspace/server/routes.ts:252:24) {
+  [cause]: Error: connect ECONNREFUSED 127.0.0.1:8000
+      at TCPConnectWrap.afterConnect [as oncomplete] (node:net:1611:16) {
+    errno: -111,
+    code: 'ECONNREFUSED',
+    syscall: 'connect',
+    address: '127.0.0.1',
+    port: 8000
+  }
+}
+9:10:47 PM [express] POST /api/calls/make 500 in 3ms :: {"error":"Connection error to FastAPI server…
+9:10:47 PM [express] GET /api/calls/recent 200 in 1ms :: [{"id":"3","phoneNumber":"+18177512041","ag…
+9:10:47 PM [express] GET /api/calls/recent 304 in 1ms :: [{"id":"3","phoneNumber":"+18177512041","ag…
+FastAPI health check failed: fetch failed
+9:11:08 PM [express] GET /api/status 304 in 2ms :: {"fastapi":"offline","twilio":"connected","openai…

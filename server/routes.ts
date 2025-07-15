@@ -28,7 +28,7 @@ function broadcast(data: any) {
 
 // Connect to your actual FastAPI server
 async function callExternalFastAPI(endpoint: string, data?: any) {
-  const FASTAPI_BASE_URL = process.env.FASTAPI_URL || 'http://localhost:8000';
+  const FASTAPI_BASE_URL = process.env.FASTAPI_URL || 'https://cmac.ngrok.app';
   const TEST_MODE = process.env.NODE_ENV === 'development' && process.env.TEST_MODE === 'true';
   
   try {
@@ -79,20 +79,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Check system status
   app.get("/api/status", async (req, res) => {
     try {
-      const FASTAPI_BASE_URL = process.env.FASTAPI_URL || 'http://localhost:8000';
+      const FASTAPI_BASE_URL = process.env.FASTAPI_URL || 'https://cmac.ngrok.app';
       
       let fastapiStatus = 'offline';
       let twilioStatus = 'disconnected';
       let openaiStatus = 'inactive';
       
-      // Check FastAPI connection
+      // Check FastAPI connection - try multiple endpoints
       try {
-        const response = await fetch(`${FASTAPI_BASE_URL}/health`, { 
-          method: 'GET',
-          signal: AbortSignal.timeout(5000) // 5 second timeout
-        });
+        console.log(`Checking FastAPI health at: ${FASTAPI_BASE_URL}`);
+        
+        // Try /health first, then root endpoint
+        let response;
+        try {
+          response = await fetch(`${FASTAPI_BASE_URL}/health`, { 
+            method: 'GET',
+            signal: AbortSignal.timeout(5000)
+          });
+        } catch (healthError) {
+          console.log('Health endpoint failed, trying root endpoint...');
+          response = await fetch(`${FASTAPI_BASE_URL}/`, { 
+            method: 'GET',
+            signal: AbortSignal.timeout(5000)
+          });
+        }
+        
+        console.log(`FastAPI response status: ${response.status}`);
         if (response.ok) {
           fastapiStatus = 'online';
+          console.log('FastAPI is online!');
+        } else {
+          console.log(`FastAPI returned status: ${response.status}`);
         }
       } catch (error) {
         console.log('FastAPI health check failed:', error instanceof Error ? error.message : 'Unknown error');
