@@ -26,29 +26,86 @@ function broadcast(data: any) {
   });
 }
 
-// Simulate external FastAPI server communication
+// Connect to your actual FastAPI server
 async function callExternalFastAPI(endpoint: string, data?: any) {
-  // In a real implementation, this would make HTTP requests to the FastAPI server
-  // For now, we'll simulate the responses
+  const FASTAPI_BASE_URL = process.env.FASTAPI_URL || 'http://localhost:8000';
   
-  console.log(`Simulating call to FastAPI ${endpoint} with data:`, data);
-  
-  // Simulate network delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  if (endpoint.startsWith('/make-call/')) {
-    // Simulate successful call initiation
+  try {
+    console.log(`Calling FastAPI ${FASTAPI_BASE_URL}${endpoint} with data:`, data);
+    
+    const url = `${FASTAPI_BASE_URL}${endpoint}`;
+    const options: RequestInit = {
+      method: endpoint.includes('/make-call/') ? 'POST' : 'GET',
+      headers: {
+        'Content-Type': 'application/json',
+      },
+      ...(data && { body: JSON.stringify(data) })
+    };
+    
+    const response = await fetch(url, options);
+    
+    if (!response.ok) {
+      throw new Error(`FastAPI request failed: ${response.status} ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    console.log(`FastAPI response:`, result);
+    
     return {
       success: true,
-      callSid: `CA${Math.random().toString(36).substr(2, 32)}`,
-      status: 'initiated'
+      ...result
     };
+  } catch (error) {
+    console.error(`FastAPI connection error:`, error);
+    
+    // If FastAPI is not available, provide helpful error message
+    throw new Error(`Unable to connect to FastAPI server at ${FASTAPI_BASE_URL}. Make sure your FastAPI service is running on port 8000.`);
   }
-  
-  return { success: true };
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Check system status
+  app.get("/api/status", async (req, res) => {
+    try {
+      const FASTAPI_BASE_URL = process.env.FASTAPI_URL || 'http://localhost:8000';
+      
+      let fastapiStatus = 'offline';
+      let twilioStatus = 'disconnected';
+      let openaiStatus = 'inactive';
+      
+      // Check FastAPI connection
+      try {
+        const response = await fetch(`${FASTAPI_BASE_URL}/health`, { 
+          method: 'GET',
+          signal: AbortSignal.timeout(5000) // 5 second timeout
+        });
+        if (response.ok) {
+          fastapiStatus = 'online';
+        }
+      } catch (error) {
+        console.log('FastAPI health check failed:', error instanceof Error ? error.message : 'Unknown error');
+      }
+      
+      // Check if required environment variables are present
+      if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
+        twilioStatus = 'connected';
+      }
+      
+      if (process.env.OPENAI_API_KEY) {
+        openaiStatus = 'active';
+      }
+      
+      res.json({
+        fastapi: fastapiStatus,
+        twilio: twilioStatus,
+        openai: openaiStatus,
+        websocket: 'connected'
+      });
+    } catch (error) {
+      res.status(500).json({ error: "Failed to check system status" });
+    }
+  });
+
   // Get available agents
   app.get("/api/agents", async (req, res) => {
     try {
@@ -114,12 +171,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       try {
         // Call external FastAPI server
-        const result = await callExternalFastAPI(`/make-call/${phoneNumber.replace(/\D/g, '')}?agent=${agent}`);
+        const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+        const result = await callExternalFastAPI(`/make-call/${cleanPhoneNumber}?agent=${agent}`);
         
         if (result.success) {
           // Update call record with call SID
           await storage.updateCallRecord(callRecord.id, {
-            callSid: result.callSid
+            callSid: result.callSid || result.call_sid
           });
           
           // Simulate call progression

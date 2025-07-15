@@ -67,6 +67,19 @@ export default function VoiceControl() {
     queryKey: ['/api/calls/recent']
   });
 
+  // Fetch system status
+  const { data: fetchedSystemStatus } = useQuery<SystemStatus>({
+    queryKey: ['/api/status'],
+    refetchInterval: 30000, // Refresh every 30 seconds
+  });
+
+  // Update system status when data is fetched
+  useEffect(() => {
+    if (fetchedSystemStatus) {
+      setSystemStatus(prev => ({ ...prev, ...fetchedSystemStatus }));
+    }
+  }, [fetchedSystemStatus]);
+
   // Make call mutation
   const makeCallMutation = useMutation({
     mutationFn: async ({ phoneNumber, agent }: { phoneNumber: string; agent: string }) => {
@@ -567,6 +580,30 @@ export default function VoiceControl() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Connection Help */}
+            {systemStatus.fastapi === 'offline' && (
+              <Card className="border-orange-200 bg-orange-50">
+                <CardHeader className="border-b border-orange-200">
+                  <CardTitle className="flex items-center text-lg font-semibold text-orange-800">
+                    <Server className="h-5 w-5 text-orange-600 mr-3" />
+                    FastAPI Connection Required
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="p-6">
+                  <div className="text-sm text-orange-800 space-y-3">
+                    <p>To make real calls, your FastAPI service needs to be running:</p>
+                    <div className="bg-orange-100 p-3 rounded-lg font-mono text-xs">
+                      cd cmac_caller<br/>
+                      python cmac_multi.py
+                    </div>
+                    <p className="text-xs text-orange-600">
+                      Make sure your FastAPI server is running on port 8000, then the dashboard will connect automatically.
+                    </p>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
 
             {/* Quick Actions */}
             <Card>
