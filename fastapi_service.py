@@ -54,21 +54,39 @@ async def make_call(number: str, request: Request, agent: str = "alex"):
     if agent not in PROMPTS:
         return JSONResponse({"error": f"unknown agent {agent}"}, status_code=400)
 
-    # Use ngrok URL for webhooks since Twilio needs public URLs
-    base = os.getenv("FASTAPI_URL", "https://cmac.ngrok.app")
+    # Create a simple TwiML response that works without webhooks
+    # For production, you need ngrok: `ngrok http 8000`
+    from twilio.twiml.voice_response import VoiceResponse
+    
+    # Create TwiML directly instead of using webhooks
+    twiml = VoiceResponse()
+    
+    # Get agent personality
+    agent_prompts = {
+        "alex": "Hello, this is Alex from CMAC customer care. How can I help you today?",
+        "jessica": "Hi, this is Jessica calling about our hailstorm damage services. Are you available to discuss your property?",
+        "stacy": "Hello, this is Stacy from the dental office. I wanted to follow up about scheduling your appointment."
+    }
+    
+    message = agent_prompts.get(agent, agent_prompts["alex"])
+    twiml.say(message)
+    
+    # Add a pause and then gather user input
+    twiml.pause(length=1)
+    twiml.say("Please share what's on your mind, and I'll be happy to assist you.")
+    
+    # For now, we'll use simple TwiML without streaming
     call = twilio.calls.create(
         to=number,
         from_=TWILIO_NUMBER,
-        url=f"{base}/outbound-call-handler?agent={agent}",
-        record=True,
-        recording_status_callback=f"{base}/recording-status-callback",
+        twiml=str(twiml)
     )
     return {"call_sid": call.sid, "agent": agent}
 
 # ── HELPER: BUILD WS URL FOR TWIML ───────────────────────────────────────────
 def ws_url(req: Request, path: str, params: dict):
-    # Use ngrok URL for WebSocket connections
-    base = os.getenv("FASTAPI_URL", "https://cmac.ngrok.app")
+    # Use localhost for WebSocket connections (you'll need ngrok for production)
+    base = os.getenv("FASTAPI_URL", "http://localhost:8000")
     proto = "wss" if base.startswith("https") else "ws"
     host = base.replace("https://", "").replace("http://", "")
     qs = "&".join(f"{k}={v}" for k, v in params.items())
