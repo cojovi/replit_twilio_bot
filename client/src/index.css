@@ -1,0 +1,113 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  --background: hsl(0, 0%, 100%);
+  --foreground: hsl(215, 25%, 15%);
+  --muted: hsl(210, 40%, 98%);
+  --muted-foreground: hsl(215, 16%, 47%);
+  --popover: hsl(0, 0%, 100%);
+  --popover-foreground: hsl(215, 25%, 15%);
+  --card: hsl(0, 0%, 100%);
+  --card-foreground: hsl(215, 25%, 15%);
+  --border: hsl(214, 32%, 91%);
+  --input: hsl(214, 32%, 91%);
+  --primary: hsl(343, 92%, 56%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(210, 40%, 98%);
+  --secondary-foreground: hsl(215, 25%, 15%);
+  --accent: hsl(210, 40%, 98%);
+  --accent-foreground: hsl(215, 25%, 15%);
+  --destructive: hsl(0, 84%, 60%);
+  --destructive-foreground: hsl(210, 40%, 98%);
+  --ring: hsl(215, 25%, 15%);
+  --radius: 0.5rem;
+  
+  /* Twilio-specific colors */
+  --twilio-red: hsl(343, 92%, 56%);
+  --twilio-navy: hsl(225, 71%, 11%);
+  --twilio-teal: hsl(171, 100%, 42%);
+  --twilio-text: hsl(215, 25%, 15%);
+  --twilio-success: hsl(173, 58%, 39%);
+}
+
+.dark {
+  --background: hsl(225, 71%, 11%);
+  --foreground: hsl(0, 0%, 98%);
+  --muted: hsl(225, 25%, 20%);
+  --muted-foreground: hsl(215, 16%, 65%);
+  --popover: hsl(225, 71%, 11%);
+  --popover-foreground: hsl(0, 0%, 98%);
+  --card: hsl(225, 71%, 11%);
+  --card-foreground: hsl(0, 0%, 98%);
+  --border: hsl(225, 25%, 20%);
+  --input: hsl(225, 25%, 20%);
+  --primary: hsl(343, 92%, 56%);
+  --primary-foreground: hsl(0, 0%, 100%);
+  --secondary: hsl(225, 25%, 20%);
+  --secondary-foreground: hsl(0, 0%, 98%);
+  --accent: hsl(225, 25%, 20%);
+  --accent-foreground: hsl(0, 0%, 98%);
+  --destructive: hsl(0, 62%, 30%);
+  --destructive-foreground: hsl(0, 0%, 98%);
+  --ring: hsl(216, 12%, 84%);
+  --radius: 0.5rem;
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply font-sans antialiased bg-background text-foreground;
+    font-family: 'Inter', system-ui, sans-serif;
+  }
+}
+
+@layer utilities {
+  .text-twilio-red {
+    color: var(--twilio-red);
+  }
+  
+  .text-twilio-navy {
+    color: var(--twilio-navy);
+  }
+  
+  .text-twilio-teal {
+    color: var(--twilio-teal);
+  }
+  
+  .text-twilio-text {
+    color: var(--twilio-text);
+  }
+  
+  .text-twilio-success {
+    color: var(--twilio-success);
+  }
+  
+  .bg-twilio-red {
+    background-color: var(--twilio-red);
+  }
+  
+  .bg-twilio-navy {
+    background-color: var(--twilio-navy);
+  }
+  
+  .bg-twilio-teal {
+    background-color: var(--twilio-teal);
+  }
+  
+  .bg-twilio-success {
+    background-color: var(--twilio-success);
+  }
+  
+  .border-twilio-red {
+    border-color: var(--twilio-red);
+  }
+  
+  .hover\:bg-twilio-red:hover {
+    background-color: hsl(343, 85%, 50%);
+  }
+}
