@@ -58,16 +58,32 @@ function createTwiMLResponse(agent: string) {
 // Direct call function using Twilio
 async function makeVoiceCall(phoneNumber: string, agent: string) {
   try {
-    console.log(`Making voice call to ${phoneNumber} with agent ${agent}`);
+    // Format phone number properly for Twilio
+    const formattedNumber = phoneNumber.startsWith('+') ? phoneNumber : `+1${phoneNumber}`;
+    console.log(`Making voice call to ${formattedNumber} with agent ${agent}`);
     
     // Create the call using Twilio
     const call = await twilioClient.calls.create({
-      to: phoneNumber,
+      to: formattedNumber,
       from: process.env.TWILIO_PHONE_NUMBER,
       twiml: createTwiMLResponse(agent)
     });
     
     console.log(`Call initiated with SID: ${call.sid}`);
+    console.log(`Call details: Status=${call.status}, To=${call.to}, From=${call.from}`);
+    
+    // Wait a moment and check the call status
+    setTimeout(async () => {
+      try {
+        const updatedCall = await twilioClient.calls(call.sid).fetch();
+        console.log(`Call ${call.sid} status update: ${updatedCall.status}`);
+        if (updatedCall.status === 'failed') {
+          console.log(`Call failure reason: ${updatedCall.errorCode} - ${updatedCall.errorMessage}`);
+        }
+      } catch (error) {
+        console.error('Error checking call status:', error);
+      }
+    }, 3000);
     
     return {
       success: true,
@@ -77,6 +93,9 @@ async function makeVoiceCall(phoneNumber: string, agent: string) {
     };
   } catch (error) {
     console.error('Twilio call error:', error);
+    if (error instanceof Error) {
+      console.error('Error details:', error.message);
+    }
     throw new Error(`Voice call failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
   }
 }
