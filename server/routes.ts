@@ -55,27 +55,36 @@ function createTwiMLResponse(agent: string) {
 </Response>`;
 }
 
-// Direct call function using Twilio
+// Call function using FastAPI service with OpenAI Realtime API
 async function makeVoiceCall(phoneNumber: string, agent: string) {
   try {
     // Use phone number as-is (already formatted from frontend)
+    console.log(`Original phone number: ${phoneNumber}`);
     console.log(`Making voice call to ${phoneNumber} with agent ${agent}`);
     
-    // Create the call using Twilio
-    const call = await twilioClient.calls.create({
-      to: phoneNumber,
-      from: process.env.TWILIO_PHONE_NUMBER,
-      twiml: createTwiMLResponse(agent)
+    // Get FastAPI service URL
+    const fastApiUrl = process.env.FASTAPI_URL || 'http://localhost:8000';
+    
+    // Use FastAPI service to make the call
+    const response = await fetch(`${fastApiUrl}/make-call/${encodeURIComponent(phoneNumber)}?agent=${agent}`, {
+      method: 'GET',
+      headers: {
+        'Content-Type': 'application/json'
+      }
     });
     
-    console.log(`Call initiated with SID: ${call.sid}`);
-    console.log(`Call details: Status=${call.status}, To=${call.to}, From=${call.from}`);
+    if (!response.ok) {
+      throw new Error(`FastAPI service error: ${response.status} ${response.statusText}`);
+    }
+    
+    const result = await response.json();
+    console.log(`Call initiated with SID: ${result.call_sid}`);
     
     // Wait a moment and check the call status
     setTimeout(async () => {
       try {
-        const updatedCall = await twilioClient.calls(call.sid).fetch();
-        console.log(`Call ${call.sid} status update: ${updatedCall.status}`);
+        const updatedCall = await twilioClient.calls(result.call_sid).fetch();
+        console.log(`Call ${result.call_sid} status update: ${updatedCall.status}`);
         if (updatedCall.status === 'failed') {
           console.log(`Call failure reason: ${updatedCall.errorCode} - ${updatedCall.errorMessage}`);
         }
@@ -86,12 +95,12 @@ async function makeVoiceCall(phoneNumber: string, agent: string) {
     
     return {
       success: true,
-      call_sid: call.sid,
+      call_sid: result.call_sid,
       agent: agent,
       status: 'initiated'
     };
   } catch (error) {
-    console.error('Twilio call error:', error);
+    console.error('Voice call error:', error);
     if (error instanceof Error) {
       console.error('Error details:', error.message);
     }
@@ -105,7 +114,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       let twilioStatus = 'disconnected';
       let openaiStatus = 'inactive';
-      let voiceBotStatus = 'online'; // Direct integration, always online
+      let fastApiStatus = 'offline';
       
       // Check if required environment variables are present
       if (process.env.TWILIO_ACCOUNT_SID && process.env.TWILIO_AUTH_TOKEN && process.env.TWILIO_PHONE_NUMBER) {
@@ -116,8 +125,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
         openaiStatus = 'active';
       }
       
+      // Check FastAPI service status
+      try {
+        const fastApiUrl = process.env.FASTAPI_URL || 'http://localhost:8000';
+        const response = await fetch(`${fastApiUrl}/health`, {
+          method: 'GET',
+          timeout: 2000
+        });
+        
+        if (response.ok) {
+          fastApiStatus = 'online';
+        }
+      } catch (error) {
+        console.log('FastAPI health check failed:', error);
+      }
+      
       res.json({
-        fastapi: voiceBotStatus, // Rename to show direct integration
+        fastapi: fastApiStatus,
         twilio: twilioStatus,
         openai: openaiStatus,
         websocket: 'connected'
