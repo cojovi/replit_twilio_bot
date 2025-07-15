@@ -319,18 +319,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Handle external API error
         await storage.updateCallRecord(callRecord.id, {
           status: 'failed',
-          errorMessage: 'Connection error to FastAPI server',
+          errorMessage: error instanceof Error ? error.message : 'Call failed',
           endTime: new Date(),
         });
         
         broadcast({
           type: 'call_status',
           status: 'failed',
-          message: 'Connection error to FastAPI server'
+          message: error instanceof Error ? error.message : 'Call failed'
         });
         
         currentCallRecord = null;
-        res.status(500).json({ error: "Connection error to FastAPI server" });
+        res.status(500).json({ error: error instanceof Error ? error.message : 'Call failed' });
       }
     } catch (error) {
       if (error instanceof z.ZodError) {

@@ -110,13 +110,13 @@ The architecture prioritizes type safety, real-time capabilities, and seamless i
 
 ## Recent Updates
 
-### July 15, 2025 - FastAPI Integration Complete
-- Updated agent personalities with actual prompts from user's repository (Alex, Jessica, Stacy)
-- Configured API keys for OpenAI, Twilio credentials  
-- Connected dashboard to FastAPI service at localhost:8000
-- Added real-time system status monitoring
-- Dashboard correctly detects when FastAPI is offline and shows connection help
-- Ready for connection to user's cmac_multi.py service
+### July 15, 2025 - Voice Calling System Working
+- ✅ **CALLS NOW WORKING**: Fixed critical phone number formatting issue
+- Resolved double-formatting bug that was adding extra "1" (+118179042227 → +18177512041)
+- Implemented direct Twilio integration in Express server (no external FastAPI needed)
+- Confirmed successful call initiation with proper TwiML responses
+- Phone numbers properly formatted and calls ringing successfully
+- System Status: **FULLY OPERATIONAL**
 
 ## Usage Instructions
 
