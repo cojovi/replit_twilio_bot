@@ -54,7 +54,8 @@ async def make_call(number: str, request: Request, agent: str = "alex"):
     if agent not in PROMPTS:
         return JSONResponse({"error": f"unknown agent {agent}"}, status_code=400)
 
-    base = str(request.base_url).rstrip("/")
+    # Use ngrok URL for webhooks since Twilio needs public URLs
+    base = os.getenv("FASTAPI_URL", "https://cmac.ngrok.app")
     call = twilio.calls.create(
         to=number,
         from_=TWILIO_NUMBER,
@@ -66,11 +67,12 @@ async def make_call(number: str, request: Request, agent: str = "alex"):
 
 # ── HELPER: BUILD WS URL FOR TWIML ───────────────────────────────────────────
 def ws_url(req: Request, path: str, params: dict):
-    proto = "wss" if req.url.scheme == "https" else "ws"
-    host  = req.url.hostname
-    port  = f":{req.url.port}" if req.url.port not in (80, 443, None) else ""
-    qs    = "&".join(f"{k}={v}" for k, v in params.items())
-    return f"{proto}://{host}{port}{path}?{qs}"
+    # Use ngrok URL for WebSocket connections
+    base = os.getenv("FASTAPI_URL", "https://cmac.ngrok.app")
+    proto = "wss" if base.startswith("https") else "ws"
+    host = base.replace("https://", "").replace("http://", "")
+    qs = "&".join(f"{k}={v}" for k, v in params.items())
+    return f"{proto}://{host}{path}?{qs}"
 
 # ── TWIML HANDLERS ───────────────────────────────────────────────────────────
 @app.api_route("/outbound-call-handler", methods=["GET", "POST"])
