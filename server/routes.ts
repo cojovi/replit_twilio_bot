@@ -151,6 +151,71 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Demo mode - test the interface without FastAPI
+  app.post("/api/calls/demo", async (req, res) => {
+    try {
+      const { phoneNumber, agent } = makeCallSchema.parse(req.body);
+      
+      const agentData = await storage.getAgent(agent);
+      if (!agentData) {
+        return res.status(400).json({ error: "Invalid agent selected" });
+      }
+      
+      const callRecord = await storage.createCallRecord({
+        phoneNumber,
+        agentId: agent,
+        status: 'in-progress',
+        callSid: `DEMO_${Math.random().toString(36).substr(2, 8)}`,
+        duration: null,
+        errorMessage: null,
+      });
+      
+      currentCallRecord = callRecord;
+      
+      broadcast({
+        type: 'call_status',
+        status: 'connecting',
+        message: `Demo: Simulating call to ${phoneNumber}...`
+      });
+      
+      // Simulate call progression in demo mode
+      setTimeout(() => {
+        broadcast({
+          type: 'call_status',
+          status: 'connected',
+          message: 'Demo: Call connected (simulated)'
+        });
+      }, 2000);
+      
+      // Simulate call completion after 10 seconds
+      setTimeout(async () => {
+        const duration = '0m 10s';
+        
+        await storage.updateCallRecord(callRecord.id, {
+          status: 'completed',
+          duration,
+          endTime: new Date(),
+        });
+        
+        broadcast({
+          type: 'call_status',
+          status: 'completed',
+          message: 'Demo: Call completed (simulated)'
+        });
+        
+        currentCallRecord = null;
+      }, 10000);
+      
+      res.json({ success: true, callId: callRecord.id, demo: true });
+    } catch (error) {
+      if (error instanceof z.ZodError) {
+        res.status(400).json({ error: "Invalid request data", details: error.errors });
+      } else {
+        res.status(500).json({ error: "Internal server error" });
+      }
+    }
+  });
+
   // Make a call
   app.post("/api/calls/make", async (req, res) => {
     try {

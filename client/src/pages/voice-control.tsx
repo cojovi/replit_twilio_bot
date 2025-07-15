@@ -9,7 +9,7 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { PhoneInput } from "@/components/ui/phone-input";
-import { Phone, PhoneCall, PhoneOff, Settings, History, Server, Zap, Mic, Download, CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
+import { Phone, PhoneCall, PhoneOff, Settings, History, Server, Zap, Mic, Download, CheckCircle, XCircle, Clock, Loader2, PlayCircle } from "lucide-react";
 
 interface Agent {
   id: string;
@@ -82,8 +82,9 @@ export default function VoiceControl() {
 
   // Make call mutation
   const makeCallMutation = useMutation({
-    mutationFn: async ({ phoneNumber, agent }: { phoneNumber: string; agent: string }) => {
-      const response = await apiRequest('POST', '/api/calls/make', { phoneNumber, agent });
+    mutationFn: async ({ phoneNumber, agent, demo = false }: { phoneNumber: string; agent: string; demo?: boolean }) => {
+      const endpoint = demo ? '/api/calls/demo' : '/api/calls/make';
+      const response = await apiRequest('POST', endpoint, { phoneNumber, agent });
       return response.json();
     },
     onSuccess: (data) => {
@@ -243,7 +244,10 @@ export default function VoiceControl() {
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    
+    handleMakeCall(false);
+  };
+
+  const handleMakeCall = (demo: boolean = false) => {
     if (!phoneNumber || phoneNumber.replace(/\D/g, '').length < 10) {
       toast({
         title: "Invalid Phone Number",
@@ -262,7 +266,7 @@ export default function VoiceControl() {
       return;
     }
     
-    makeCallMutation.mutate({ phoneNumber, agent: selectedAgent });
+    makeCallMutation.mutate({ phoneNumber, agent: selectedAgent, demo });
   };
 
   const handleReset = () => {
@@ -396,8 +400,8 @@ export default function VoiceControl() {
                   <div className="flex space-x-4 pt-4">
                     <Button
                       type="submit"
-                      disabled={makeCallMutation.isPending || callStatus.isActive}
-                      className="flex-1 bg-twilio-red hover:bg-twilio-red/90 text-white"
+                      disabled={makeCallMutation.isPending || callStatus.isActive || systemStatus.fastapi === 'offline'}
+                      className="flex-1 bg-twilio-red hover:bg-twilio-red/90 text-white disabled:opacity-50"
                     >
                       {makeCallMutation.isPending ? (
                         <>
@@ -420,6 +424,35 @@ export default function VoiceControl() {
                       Reset
                     </Button>
                   </div>
+                  
+                  {/* Demo Mode Button - Show when FastAPI is offline */}
+                  {systemStatus.fastapi === 'offline' && (
+                    <div className="pt-4 border-t border-gray-200">
+                      <div className="text-center mb-3">
+                        <p className="text-sm text-gray-500">FastAPI service is offline</p>
+                        <p className="text-xs text-gray-400">Try demo mode to test the interface</p>
+                      </div>
+                      <Button
+                        type="button"
+                        onClick={() => handleMakeCall(true)}
+                        disabled={makeCallMutation.isPending || callStatus.isActive || !phoneNumber || !selectedAgent}
+                        variant="outline"
+                        className="w-full border-twilio-red text-twilio-red hover:bg-twilio-red hover:text-white"
+                      >
+                        {makeCallMutation.isPending ? (
+                          <>
+                            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                            Starting Demo...
+                          </>
+                        ) : (
+                          <>
+                            <PlayCircle className="h-4 w-4 mr-2" />
+                            Try Demo Mode
+                          </>
+                        )}
+                      </Button>
+                    </div>
+                  )}
                 </form>
               </CardContent>
             </Card>
