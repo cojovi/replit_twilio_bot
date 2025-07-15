@@ -29,17 +29,18 @@ function broadcast(data: any) {
 // Connect to your actual FastAPI server
 async function callExternalFastAPI(endpoint: string, data?: any) {
   const FASTAPI_BASE_URL = process.env.FASTAPI_URL || 'http://localhost:8000';
+  const TEST_MODE = process.env.NODE_ENV === 'development' && process.env.TEST_MODE === 'true';
   
   try {
     console.log(`Calling FastAPI ${FASTAPI_BASE_URL}${endpoint} with data:`, data);
     
     const url = `${FASTAPI_BASE_URL}${endpoint}`;
     const options: RequestInit = {
-      method: endpoint.includes('/make-call/') ? 'POST' : 'GET',
+      method: endpoint.includes('/make-call/') ? 'GET' : 'GET',
       headers: {
         'Content-Type': 'application/json',
       },
-      ...(data && { body: JSON.stringify(data) })
+      // Note: Your FastAPI uses GET for /make-call/{number} endpoints
     };
     
     const response = await fetch(url, options);
@@ -57,6 +58,17 @@ async function callExternalFastAPI(endpoint: string, data?: any) {
     };
   } catch (error) {
     console.error(`FastAPI connection error:`, error);
+    
+    // If in test mode and FastAPI is not available, simulate success for demo purposes
+    if (TEST_MODE && endpoint.includes('/make-call/')) {
+      console.log('Test mode: Simulating FastAPI call success');
+      return {
+        success: true,
+        call_sid: `CA${Math.random().toString(36).substr(2, 32)}`,
+        message: 'Test call initiated (simulated)',
+        status: 'initiated'
+      };
+    }
     
     // If FastAPI is not available, provide helpful error message
     throw new Error(`Unable to connect to FastAPI server at ${FASTAPI_BASE_URL}. Make sure your FastAPI service is running on port 8000.`);

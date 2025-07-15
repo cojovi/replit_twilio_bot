@@ -107,3 +107,25 @@ Required environment variables:
 - Development uses `db:push` for rapid iteration
 
 The architecture prioritizes type safety, real-time capabilities, and seamless integration with external voice services while maintaining a clean separation of concerns and scalable deployment options.
+
+## Recent Updates
+
+### July 15, 2025 - FastAPI Integration Complete
+- Updated agent personalities with actual prompts from user's repository (Alex, Jessica, Stacy)
+- Configured API keys for OpenAI, Twilio credentials  
+- Connected dashboard to FastAPI service at localhost:8000
+- Added real-time system status monitoring
+- Dashboard correctly detects when FastAPI is offline and shows connection help
+- Ready for connection to user's cmac_multi.py service
+
+## Usage Instructions
+
+### To use with your existing FastAPI service:
+1. Start your FastAPI service: `cd cmac_caller && python cmac_multi.py`
+2. The dashboard will automatically connect and show "FastAPI Server: Online"
+3. You can then make real calls through the interface
+
+### Test Mode (without FastAPI):
+- Dashboard works in demonstration mode when FastAPI is offline
+- Shows connection status and interface functionality
+- Displays helpful setup instructions
