@@ -176,3 +176,38 @@ Set the environment variable `FASTAPI_URL` to your actual ngrok URL
 - Dashboard works in demonstration mode when FastAPI is offline
 - Shows connection status and interface functionality  
 - Try the "Demo Mode" button to see call simulation
+
+## Usage Instructions
+
+### To use with your existing FastAPI service:
+1. **Start your FastAPI service locally:**
+   ```bash
+   cd cmac_caller
+   python cmac_multi.py
+   ```
+   (This runs on port 5050)
+
+2. **Expose your service with ngrok (required for Twilio webhooks):**
+   ```bash
+   ngrok http 5050
+   ```
+   This creates a public URL like `https://abc123.ngrok.app`
+
+3. **Update your Twilio webhook URLs** in your Twilio Console to point to your ngrok URL
+   
+4. **The dashboard will automatically connect** and show "FastAPI Server: Online"
+
+5. **You can then make real calls** through the interface
+
+### Connection Architecture:
+- **Dashboard → FastAPI**: Direct connection via ngrok URL (configurable)
+- **Twilio → FastAPI**: Public connection via ngrok URL for webhooks  
+- Dashboard now connects to your ngrok URL: `https://cmac.ngrok.app`
+
+### If your ngrok URL is different:
+Set the environment variable `FASTAPI_URL` to your actual ngrok URL
+
+### Test Mode (without FastAPI):
+- Dashboard works in demonstration mode when FastAPI is offline
+- Shows connection status and interface functionality  
+- Try the "Demo Mode" button to see call simulation
