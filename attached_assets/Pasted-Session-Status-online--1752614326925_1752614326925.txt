@@ -1,0 +1,17 @@
+Session Status                online                                                                                                                     
+Account                       codyv@cmacroofing.com (Plan: Pay-as-you-go)                                                                                
+Update                        update available (version 3.23.3, Ctrl-U to update)                                                                        
+Version                       3.18.4                                                                                                                     
+Region                        United States (us)                                                                                                         
+Latency                       30ms                                                                                                                       
+Web Interface                 http://127.0.0.1:4040                                                                                                      
+Forwarding                    https://cmac.ngrok.app -> http://localhost:8000                                                                            
+                                                                                                                                                         
+Connections                   ttl     opn     rt1     rt5     p50     p90                                                                                
+                              0       1       0.00    0.00    0.00    0.00                                                                               
+                                                                                                                                                         
+HTTP Requests                                                                                                                                            
+-------------                                                                                                                                            
+                                                                                                                                                         
+16:12:50.232 CDT HEAD /health                   502 Bad Gateway                                                                                          
+                                                                               

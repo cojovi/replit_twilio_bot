@@ -126,10 +126,11 @@ The architecture prioritizes type safety, real-time capabilities, and seamless i
    cd cmac_caller
    python cmac_multi.py
    ```
+   (This runs on port 5050)
 
 2. **Expose your service with ngrok (required for Twilio webhooks):**
    ```bash
-   ngrok http 8000
+   ngrok http 5050
    ```
    This creates a public URL like `https://abc123.ngrok.app`
 
