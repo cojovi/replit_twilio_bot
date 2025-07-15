@@ -62,8 +62,8 @@ async function makeVoiceCall(phoneNumber: string, agent: string) {
     console.log(`Original phone number: ${phoneNumber}`);
     console.log(`Making voice call to ${phoneNumber} with agent ${agent}`);
     
-    // Get FastAPI service URL - defaults to user's ngrok URL
-    const fastApiUrl = process.env.FASTAPI_URL || 'https://cmac.ngrok.app';
+    // Get FastAPI service URL - defaults to local FastAPI service
+    const fastApiUrl = process.env.FASTAPI_URL || 'http://localhost:8000';
     
     // Use FastAPI service to make the call
     const response = await fetch(`${fastApiUrl}/make-call/${encodeURIComponent(phoneNumber)}?agent=${agent}`, {
@@ -127,10 +127,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Check FastAPI service status
       try {
-        const fastApiUrl = process.env.FASTAPI_URL || 'https://cmac.ngrok.app';
+        const fastApiUrl = process.env.FASTAPI_URL || 'http://localhost:8000';
         const response = await fetch(`${fastApiUrl}/health`, {
           method: 'GET',
-          timeout: 2000
+          signal: AbortSignal.timeout(5000)
         });
         
         if (response.ok) {

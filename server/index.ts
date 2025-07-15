@@ -1,6 +1,7 @@
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { spawn } from "child_process";
 
 const app = express();
 app.use(express.json());
@@ -36,7 +37,35 @@ app.use((req, res, next) => {
   next();
 });
 
+// Start FastAPI service in background
+function startFastAPIService() {
+  const fastApiProcess = spawn('python', ['-m', 'uvicorn', 'fastapi_service:app', '--host', '0.0.0.0', '--port', '8000'], {
+    stdio: 'pipe',
+    detached: true
+  });
+  
+  fastApiProcess.stdout?.on('data', (data) => {
+    console.log(`FastAPI: ${data.toString().trim()}`);
+  });
+  
+  fastApiProcess.stderr?.on('data', (data) => {
+    console.error(`FastAPI error: ${data.toString().trim()}`);
+  });
+  
+  fastApiProcess.on('close', (code) => {
+    console.log(`FastAPI service exited with code ${code}`);
+  });
+  
+  // Don't wait for the process to finish
+  fastApiProcess.unref();
+  
+  console.log('FastAPI service started in background');
+}
+
 (async () => {
+  // Start FastAPI service
+  startFastAPIService();
+  
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
