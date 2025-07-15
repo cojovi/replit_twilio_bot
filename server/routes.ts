@@ -259,6 +259,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         // Make call directly with Twilio
         const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+        console.log(`Original phone number: ${phoneNumber}`);
+        console.log(`Clean phone number: ${cleanPhoneNumber}`);
         const result = await makeVoiceCall(cleanPhoneNumber, agent);
         
         if (result.success) {

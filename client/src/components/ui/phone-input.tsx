@@ -45,7 +45,9 @@ export function PhoneInput({ value, onChange, placeholder, className }: PhoneInp
     
     // Pass back the full phone number with country code
     if (digits.length > 0) {
-      onChange(`+1${digits.slice(1)}`);
+      // If digits start with 1, use them as-is, otherwise prepend 1
+      const fullNumber = digits.startsWith('1') ? `+${digits}` : `+1${digits}`;
+      onChange(fullNumber);
     } else {
       onChange('');
     }
