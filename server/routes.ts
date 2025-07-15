@@ -58,13 +58,12 @@ function createTwiMLResponse(agent: string) {
 // Direct call function using Twilio
 async function makeVoiceCall(phoneNumber: string, agent: string) {
   try {
-    // Format phone number properly for Twilio
-    const formattedNumber = phoneNumber.startsWith('+') ? phoneNumber : `+${phoneNumber}`;
-    console.log(`Making voice call to ${formattedNumber} with agent ${agent}`);
+    // Use phone number as-is (already formatted from frontend)
+    console.log(`Making voice call to ${phoneNumber} with agent ${agent}`);
     
     // Create the call using Twilio
     const call = await twilioClient.calls.create({
-      to: formattedNumber,
+      to: phoneNumber,
       from: process.env.TWILIO_PHONE_NUMBER,
       twiml: createTwiMLResponse(agent)
     });
@@ -257,17 +256,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
       
       try {
-        // Make call via FastAPI service
-        const cleanPhoneNumber = phoneNumber.replace(/\D/g, '');
+        // Make call directly with Twilio - fixed phone number formatting
         console.log(`Original phone number: ${phoneNumber}`);
-        console.log(`Clean phone number: ${cleanPhoneNumber}`);
         
-        // Call the FastAPI service running on localhost:5050
-        const response = await fetch(`http://localhost:5050/make-call/${cleanPhoneNumber}?agent=${agent}`);
-        if (!response.ok) {
-          throw new Error(`FastAPI service error: ${response.status}`);
-        }
-        const result = await response.json();
+        // Use the phone number as-is from the frontend (already formatted as +18177512041)
+        const result = await makeVoiceCall(phoneNumber, agent);
         
         if (result.success) {
           // Update call record with call SID

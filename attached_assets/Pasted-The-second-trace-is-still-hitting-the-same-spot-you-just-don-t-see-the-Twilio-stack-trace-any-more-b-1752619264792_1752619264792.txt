@@ -1,0 +1,62 @@
+The second trace is still hitting the same spot—you just don’t see the Twilio stack-trace any more because your catch-block converts every error that bubbles up from client.calls.create() into the generic
+
+json
+Copy
+Edit
+{"error":"Connection error to FastAPI server"}
+Hence Express returns 500 after ±15 ms.
+
+What almost certainly went wrong again
+text
+Copy
+Edit
+Original phone number: +18177512041   // correct E.164
+Clean phone number:    18177512041    // leading “1” kept
+If you then build to like either of these
+
+ts
+Copy
+Edit
+// A.
+await client.calls.create({ to: clean, from, ... })   // no “+” at all
+// B.
+await client.calls.create({ to: `+1${clean}`, from, ... }) // adds a 2nd 1  → +1181…
+Twilio rejects it as 21211 Invalid "To" phone number and throws a RestException, which your code hides. 
+Twilio
+
+On a trial account the same symptom appears if the number isn’t verified, but the error code would be 21608 (“number not yet verified”). If you’re using a full paid account, it’s almost always the formatting problem.
+
+Fix in one place
+ts
+Copy
+Edit
+import { parsePhoneNumber } from 'libphonenumber-js';
+
+function toE164(raw: string): string {
+  const num = parsePhoneNumber(raw, 'US');   // change default region if needed
+  if (!num?.isValid()) throw new Error(`Invalid phone number: ${raw}`);
+  return num.number;                         // always returns +18177512041
+}
+Then:
+
+ts
+Copy
+Edit
+await client.calls.create({
+  to:   toE164(req.body.phoneNumber),
+  from: process.env.TWILIO_PHONE_NUMBER!,
+  url:  `${FASTAPI_URL}/outbound-call-handler?agent=${agent}`,
+});
+Show the real reason to the caller
+ts
+Copy
+Edit
+try {
+  …
+} catch (err: any) {
+  if (err.code === 21211 || err.code === 21608) {
+    return res.status(400).json({ twilioCode: err.code, message: err.message });
+  }
+  next(err);               // falls through to your generic 500 handler
+}
+With the correct E.164 formatter in place and clearer error surfacing you’ll know immediately whether the problem is still formatting, an unverified destination on a trial project, or something else.
