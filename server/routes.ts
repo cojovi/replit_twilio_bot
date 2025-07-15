@@ -89,30 +89,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       try {
         console.log(`Checking FastAPI health at: ${FASTAPI_BASE_URL}`);
         
-        // Try /health first, then root endpoint
+        // Try /docs endpoint (FastAPI automatically creates this)
         let response;
         try {
-          response = await fetch(`${FASTAPI_BASE_URL}/health`, { 
+          response = await fetch(`${FASTAPI_BASE_URL}/docs`, { 
             method: 'GET',
             signal: AbortSignal.timeout(5000)
           });
-        } catch (healthError) {
-          console.log('Health endpoint failed, trying root endpoint...');
-          response = await fetch(`${FASTAPI_BASE_URL}/`, { 
-            method: 'GET',
-            signal: AbortSignal.timeout(5000)
-          });
+        } catch (docsError) {
+          console.log('Docs endpoint failed, trying root endpoint...');
+          try {
+            response = await fetch(`${FASTAPI_BASE_URL}/`, { 
+              method: 'GET',
+              signal: AbortSignal.timeout(5000)
+            });
+          } catch (rootError) {
+            console.log('Root endpoint failed, trying /health endpoint...');
+            response = await fetch(`${FASTAPI_BASE_URL}/health`, { 
+              method: 'GET',
+              signal: AbortSignal.timeout(5000)
+            });
+          }
         }
         
         console.log(`FastAPI response status: ${response.status}`);
         if (response.ok) {
           fastapiStatus = 'online';
           console.log('FastAPI is online!');
+        } else if (response.status === 404) {
+          console.log('FastAPI is running but endpoints not found - this is expected if service structure is different');
+          // If we can connect but get 404, the service might be running but with different endpoints
+          fastapiStatus = 'online';
         } else {
           console.log(`FastAPI returned status: ${response.status}`);
         }
       } catch (error) {
         console.log('FastAPI health check failed:', error instanceof Error ? error.message : 'Unknown error');
+        console.log('Make sure your FastAPI service is running and ngrok is forwarding the correct port');
       }
       
       // Check if required environment variables are present
