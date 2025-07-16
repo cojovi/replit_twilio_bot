@@ -54,80 +54,41 @@ async def make_call(number: str, request: Request, agent: str = "alex"):
     if agent not in PROMPTS:
         return JSONResponse({"error": f"unknown agent {agent}"}, status_code=400)
 
-    # Generate high-quality OpenAI speech for better voice quality
-    import openai
-    from twilio.twiml.voice_response import VoiceResponse
+    # Use OpenAI Realtime API with Media Streams - PROPER IMPLEMENTATION
+    # Force use a working ngrok URL - will be dynamically detected
+    import requests
+    import time
     
-    client = openai.OpenAI(api_key=OPENAI_API_KEY)
-    
-    # Get agent's personality and create greeting
-    agent_greetings = {
-        "alex": "Hello, this is Alex calling from CMAC customer care. I'm here to help with any questions about your account or services. How can I assist you today?",
-        "jessica": "Hi there! This is Jessica from the storm damage assessment team. I'm calling to follow up about the recent hailstorm in your area. We're offering free property inspections. Do you have a moment to discuss this?",
-        "stacy": "Hello, this is Stacy calling from Bright Smiles Dental. I wanted to personally follow up about scheduling your next appointment. We have some great availability this week. Are you interested?"
-    }
-    
-    greeting = agent_greetings.get(agent, agent_greetings["alex"])
-    
-    # Generate high-quality speech using OpenAI
-    try:
-        response = client.audio.speech.create(
-            model="tts-1-hd",  # High-quality model
-            voice="nova",      # Natural voice
-            input=greeting,
-            response_format="mp3"
-        )
-        
-        # Save audio file temporarily
-        import tempfile
-        import os
-        
-        with tempfile.NamedTemporaryFile(delete=False, suffix=".mp3") as tmp_file:
-            tmp_file.write(response.content)
-            audio_path = tmp_file.name
-        
-        # Upload to a temporary URL (for demo purposes, in production use proper hosting)
-        # For now, we'll use the TwiML Play verb with the OpenAI-generated audio
-        twiml = VoiceResponse()
-        
-        # Use OpenAI's high-quality voice directly in TwiML
-        twiml.say(greeting, voice="alice")  # Use Twilio's best voice as fallback
-        
-        # Add interaction capability
-        gather = twiml.gather(
-            input='speech',
-            action='/handle-speech',
-            method='POST',
-            speechTimeout=3,
-            timeout=10
-        )
-        gather.say("Please let me know how I can help you.", voice="alice")
-        
-        # Fallback if no input
-        twiml.say("I didn't hear anything. Please call back when you're ready to chat.", voice="alice")
-        
-        call = twilio.calls.create(
-            to=number,
-            from_=TWILIO_NUMBER,
-            twiml=str(twiml)
-        )
-        
-        # Clean up temp file
+    # Try to get live ngrok URL
+    ngrok_url = None
+    for _ in range(3):
         try:
-            os.unlink(audio_path)
+            tunnels = requests.get("http://localhost:4040/api/tunnels", timeout=2).json()
+            if tunnels.get("tunnels") and len(tunnels["tunnels"]) > 0:
+                ngrok_url = tunnels["tunnels"][0]["public_url"]
+                break
         except:
-            pass
-            
-    except Exception as e:
-        print(f"OpenAI TTS failed: {e}")
-        # Fallback to basic TwiML
-        twiml = VoiceResponse()
-        twiml.say(greeting, voice="alice")
-        call = twilio.calls.create(
-            to=number,
-            from_=TWILIO_NUMBER,
-            twiml=str(twiml)
-        )
+            time.sleep(1)
+    
+    # Fallback to environment or default
+    if not ngrok_url:
+        ngrok_url = os.getenv("FASTAPI_URL", "https://cmac.ngrok.app")
+    
+    ws_url = ngrok_url.replace("https://", "wss://").replace("http://", "ws://")
+    
+    print(f"🔥 USING OPENAI REALTIME API: {ws_url}/media-stream?agent={agent}")
+    
+    # Create TwiML that connects to our WebSocket for OpenAI Realtime API
+    twiml = VoiceResponse()
+    connect = twiml.connect()
+    stream = connect.stream(url=f"{ws_url}/media-stream?agent={agent}")
+    
+    call = twilio.calls.create(
+        to=number,
+        from_=TWILIO_NUMBER,
+        twiml=str(twiml)
+    )
+    
     return {"call_sid": call.sid, "agent": agent}
 
 # ── HELPER: BUILD WS URL FOR TWIML ───────────────────────────────────────────
@@ -139,50 +100,139 @@ def ws_url(req: Request, path: str, params: dict):
     qs = "&".join(f"{k}={v}" for k, v in params.items())
     return f"{proto}://{host}{path}?{qs}"
 
-# ── SPEECH HANDLING ─────────────────────────────────────────────────────────
-@app.api_route("/handle-speech", methods=["POST"])
-async def handle_speech(request: Request):
-    """Handle speech input from user"""
-    form = await request.form()
-    speech_result = form.get("SpeechResult", "")
+# ── OPENAI REALTIME API WEBSOCKET HANDLER ──────────────────────────────────
+@app.websocket("/media-stream")
+async def media(ws: WebSocket):
+    """Handle Twilio Media Stream with OpenAI Realtime API"""
+    await ws.accept()
     
-    vr = VoiceResponse()
+    agent = ws.query_params.get("agent", "alex")
+    prompt = PROMPTS.get(agent, PROMPTS["alex"])
     
-    if speech_result:
-        # Process speech with OpenAI for intelligent response
-        try:
-            import openai
-            client = openai.OpenAI(api_key=OPENAI_API_KEY)
-            
-            # Get contextual response from OpenAI
-            response = client.chat.completions.create(
-                model="gpt-4o",
-                messages=[
-                    {"role": "system", "content": "You are a helpful customer service representative. Respond conversationally and professionally in under 50 words."},
-                    {"role": "user", "content": speech_result}
-                ]
-            )
-            
-            ai_response = response.choices[0].message.content
-            vr.say(ai_response, voice="alice")
-            
-            # Ask for more input
-            gather = vr.gather(
-                input='speech',
-                action='/handle-speech',
-                method='POST',
-                speechTimeout=3,
-                timeout=10
-            )
-            gather.say("Is there anything else I can help you with?", voice="alice")
-            
-        except Exception as e:
-            print(f"OpenAI chat failed: {e}")
-            vr.say("I understand. Thank you for your time. Have a great day!", voice="alice")
-    else:
-        vr.say("Thank you for your time. Have a great day!", voice="alice")
+    print(f"Media stream connected for agent: {agent}")
     
-    return HTMLResponse(str(vr), media_type="application/xml")
+    # OpenAI Realtime API WebSocket
+    import asyncio
+    import websockets
+    import json
+    import base64
+    
+    openai_ws = None
+    stream_sid = None
+    call_sid = None
+    
+    try:
+        # Connect to OpenAI Realtime API
+        openai_ws = await websockets.connect(
+            "wss://api.openai.com/v1/realtime?model=gpt-4o-realtime-preview-2024-10-01",
+            extra_headers={
+                "Authorization": f"Bearer {OPENAI_API_KEY}",
+                "OpenAI-Beta": "realtime=v1"
+            }
+        )
+        
+        print("Connected to OpenAI Realtime API")
+        
+        # Configure OpenAI session with agent personality
+        session_config = {
+            "type": "session.update",
+            "session": {
+                "modalities": ["text", "audio"],
+                "instructions": prompt,
+                "voice": "alloy",
+                "input_audio_format": "g711_ulaw",
+                "output_audio_format": "g711_ulaw",
+                "input_audio_transcription": {
+                    "model": "whisper-1"
+                },
+                "turn_detection": {
+                    "type": "server_vad",
+                    "threshold": 0.5,
+                    "prefix_padding_ms": 300,
+                    "silence_duration_ms": 500
+                },
+                "tools": [],
+                "tool_choice": "auto",
+                "temperature": 0.8,
+                "max_response_output_tokens": 4096
+            }
+        }
+        
+        await openai_ws.send(json.dumps(session_config))
+        print("OpenAI session configured")
+        
+        # Task to handle messages from Twilio -> OpenAI
+        async def twilio_to_oai():
+            async for message in ws.iter_text():
+                try:
+                    data = json.loads(message)
+                    
+                    if data["event"] == "start":
+                        stream_sid = data["start"]["streamSid"]
+                        call_sid = data["start"]["callSid"]
+                        print(f"Stream started - SID: {stream_sid}")
+                        
+                    elif data["event"] == "media":
+                        # Forward audio to OpenAI
+                        audio_append = {
+                            "type": "input_audio_buffer.append",
+                            "audio": data["media"]["payload"]
+                        }
+                        await openai_ws.send(json.dumps(audio_append))
+                        
+                    elif data["event"] == "stop":
+                        print("Stream stopped")
+                        break
+                        
+                except json.JSONDecodeError:
+                    print("Invalid JSON from Twilio")
+                except Exception as e:
+                    print(f"Error processing Twilio message: {e}")
+        
+        # Task to handle messages from OpenAI -> Twilio
+        async def oai_to_twilio():
+            async for message in openai_ws:
+                try:
+                    response = json.loads(message)
+                    
+                    if response["type"] == "response.audio.delta":
+                        # Send audio back to Twilio
+                        audio_delta = {
+                            "event": "media",
+                            "streamSid": stream_sid,
+                            "media": {
+                                "payload": response["delta"]
+                            }
+                        }
+                        await ws.send_text(json.dumps(audio_delta))
+                        
+                    elif response["type"] == "response.audio.done":
+                        print("Audio response completed")
+                        
+                    elif response["type"] == "conversation.item.input_audio_transcription.completed":
+                        transcript = response["transcript"]
+                        print(f"User said: {transcript}")
+                        
+                    elif response["type"] == "response.done":
+                        print("Response completed")
+                        
+                except json.JSONDecodeError:
+                    print("Invalid JSON from OpenAI")
+                except Exception as e:
+                    print(f"Error processing OpenAI message: {e}")
+        
+        # Run both tasks concurrently
+        await asyncio.gather(
+            twilio_to_oai(),
+            oai_to_twilio()
+        )
+        
+    except Exception as e:
+        print(f"Error in media stream: {e}")
+    finally:
+        if openai_ws:
+            await openai_ws.close()
+        await ws.close()
 
 # ── TWIML HANDLERS ───────────────────────────────────────────────────────────
 @app.api_route("/outbound-call-handler", methods=["GET", "POST"])
